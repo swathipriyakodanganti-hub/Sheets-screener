@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campaign Portal — BTL Recruitment</title>
+<style>
+/* ── RESET & BASE ───────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:       #0f1117;
+  --surface:  #171b26;
+  --card:     #1e2235;
+  --border:   #2a2f45;
+  --border-2: #363d58;
+  --accent:   #5b6af0;
+  --accent-l: #7b89f4;
+  --accent-bg:#1a1f3a;
+  --green:    #22c55e;
+  --green-bg: #0d2318;
+  --amber:    #f59e0b;
+  --amber-bg: #1f1608;
+  --red:      #ef4444;
+  --red-bg:   #200a0a;
+  --text-1:   #e8eaf6;
+  --text-2:   #8b92b8;
+  --text-3:   #525a7a;
+  --radius:   8px;
+  --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+body { font-family: var(--font); background: var(--bg); color: var(--text-1); font-size: 13px; height: 100vh; overflow: hidden; }
+
+/* ── TOPBAR ─────────────────────────────────────────────── */
+.topbar { height: 48px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+.topbar-logo { font-size: 14px; font-weight: 600; color: var(--text-1); letter-spacing: -0.02em; }
+.topbar-logo span { color: var(--accent-l); }
+.topbar-campaign { font-size: 12px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+.topbar-campaign::before { content: '/'; color: var(--border-2); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.btn { padding: 5px 12px; border-radius: var(--radius); font-size: 12px; font-weight: 500; cursor: pointer; border: 1px solid var(--border-2); background: var(--card); color: var(--text-1); transition: border-color .15s, background .15s; }
+.btn:hover { border-color: var(--border-2); background: var(--border); }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-accent:hover { background: var(--accent-l); border-color: var(--accent-l); }
+
+/* ── APP SHELL ──────────────────────────────────────────── */
+.app { display: flex; height: calc(100vh - 48px); overflow: hidden; }
+
+/* ── CAMPAIGN SWITCHER (HOME) ───────────────────────────── */
+.home { position: absolute; inset: 0; background: var(--bg); z-index: 50; display: flex; flex-direction: column; align-items: center; padding-top: 72px; }
+.home.hidden { display: none; }
+.home-title { font-size: 20px; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 4px; }
+.home-sub { font-size: 13px; color: var(--text-2); margin-bottom: 32px; }
+.home-card { width: 480px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.home-card-hdr { padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 500; color: var(--text-2); }
+.add-row { display: flex; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.add-row input { flex: 1; height: 34px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 10px; font-size: 12px; color: var(--text-1); outline: none; }
+.add-row input:focus { border-color: var(--accent); }
+.add-row input::placeholder { color: var(--text-3); }
+.campaign-list { max-height: 280px; overflow-y: auto; }
+.campaign-item { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.campaign-item:hover { background: var(--card); }
+.campaign-item:last-child { border-bottom: none; }
+.ci-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.ci-info { flex: 1; min-width: 0; }
+.ci-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ci-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.ci-count { font-size: 11px; background: var(--accent-bg); color: var(--accent-l); padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
+.ci-del { font-size: 16px; color: var(--text-3); cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.ci-del:hover { color: var(--red); background: var(--red-bg); }
+.empty-campaigns { padding: 32px 18px; text-align: center; color: var(--text-3); font-size: 12px; }
+
+/* ── COL A: CANDIDATE LIST ──────────────────────────────── */
+.col-a { width: 220px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; background: var(--surface); }
+.col-hdr { height: 40px; display: flex; align-items: center; gap: 6px; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 500; color: var(--text-2); flex-shrink: 0; letter-spacing: .03em; text-transform: uppercase; }
+.col-hdr-pill { margin-left: auto; background: var(--accent-bg); color: var(--accent-l); border-radius: 99px; padding: 1px 7px; font-size: 10px; font-weight: 600; }
+.search-wrap { padding: 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.search-wrap input { width: 100%; height: 28px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 0 8px 0 28px; font-size: 12px; color: var(--text-1); outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23525a7a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 8px center; }
+.search-wrap input:focus { border-color: var(--accent); }
+.search-wrap input::placeholder { color: var(--text-3); }
+.filter-strip { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.fchip { flex: 1; text-align: center; padding: 3px 0; font-size: 10px; font-weight: 500; border-radius: 99px; cursor: pointer; border: 1px solid var(--border); color: var(--text-2); background: transparent; transition: all .12s; }
+.fchip.on { background: var(--accent-bg); color: var(--accent-l); border-color: var(--accent); }
+.cand-scroll { flex: 1; overflow-y: auto; }
+.cand-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .1s; }
+.cand-row:hover { background: var(--card); }
+.cand-row.sel { background: var(--accent-bg); border-left: 2px solid var(--accent); padding-left: 8px; }
+.cand-row.sel .cr-name { color: var(--accent-l); }
+.avatar { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; flex-shrink: 0; }
+.av-g { background: #0d2f1c; color: #4ade80; }
+.av-m { background: #1e1533; color: #a78bfa; }
+.cr-info { flex: 1; min-width: 0; }
+.cr-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-sub { font-size: 10px; color: var(--text-3); margin-top: 1px; }
+.star-btn { font-size: 14px; color: var(--text-3); cursor: pointer; flex-shrink: 0; transition: color .1s; line-height: 1; }
+.star-btn:hover { color: var(--amber); }
+.star-btn.on { color: var(--amber); }
+
+/* ── COL B: DETAIL ──────────────────────────────────────── */
+.col-b { width: 256px; border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; background: var(--bg); }
+.detail-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); }
+.detail-empty svg { opacity: .3; }
+.det-scroll { flex: 1; overflow-y: auto; padding: 14px 12px; }
+.det-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; margin-bottom: 10px; }
+.det-name { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
+.role-pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 10px; font-weight: 600; margin-bottom: 14px; }
+.rp-g { background: #0d2f1c; color: #4ade80; }
+.rp-m { background: #1e1533; color: #a78bfa; }
+.info-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
+.info-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.info-row:last-child { border-bottom: none; }
+.info-icon { width: 14px; color: var(--text-3); flex-shrink: 0; }
+.info-lbl { font-size: 10px; color: var(--text-3); width: 58px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .03em; }
+.info-val { font-size: 11px; color: var(--text-1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy-btn { font-size: 11px; color: var(--text-3); cursor: pointer; padding: 2px; border-radius: 3px; flex-shrink: 0; transition: color .1s; }
+.copy-btn:hover { color: var(--accent-l); }
+.sl-badge { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--green-bg); border: 1px solid #14532d; border-radius: var(--radius); font-size: 11px; color: var(--green); margin-bottom: 10px; }
+.det-footer { padding: 10px 12px; border-top: 1px solid var(--border); flex-shrink: 0; background: var(--surface); }
+.sl-action-btn { width: 100%; padding: 8px; border-radius: var(--radius); font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all .15s; }
+.sl-action-btn.add { background: var(--accent); color: #fff; }
+.sl-action-btn.add:hover { background: var(--accent-l); }
+.sl-action-btn.rem { background: var(--red-bg); color: var(--red); border: 1px solid #7f1d1d; }
+.sl-action-btn.rem:hover { background: #2d0909; }
+.sl-action-hint { font-size: 10px; color: var(--text-3); text-align: center; margin-top: 5px; }
+
+/* ── COL C: RESUME ──────────────────────────────────────── */
+.col-c { flex: 1; display: flex; flex-direction: column; background: var(--bg); min-width: 0; }
+.resume-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); }
+.resume-empty svg { opacity: .25; }
+.resume-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.resume-frame-wrap { flex: 1; overflow: hidden; position: relative; }
+.resume-frame-wrap iframe { width: 100%; height: 100%; border: none; }
+.resume-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text-3); padding: 24px; text-align: center; }
+.resume-open-btn { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--accent-bg); border: 1px solid var(--accent); border-radius: var(--radius); color: var(--accent-l); font-size: 12px; font-weight: 500; cursor: pointer; text-decoration: none; margin-top: 4px; transition: background .15s; }
+.resume-open-btn:hover { background: var(--accent); color: #fff; }
+
+/* ── SHORTLIST TRAY ─────────────────────────────────────── */
+.sl-tray { border-top: 1px solid var(--border); background: var(--surface); flex-shrink: 0; max-height: 100px; overflow-y: auto; }
+.sl-tray-hdr { display: flex; align-items: center; gap: 6px; padding: 7px 12px; font-size: 10px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.sl-tray-cnt { margin-left: auto; background: var(--green-bg); color: var(--green); border-radius: 99px; padding: 1px 7px; font-size: 10px; }
+.sl-chips { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 12px 9px; }
+.sl-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; background: var(--accent-bg); border: 1px solid var(--accent); border-radius: 99px; font-size: 11px; color: var(--accent-l); }
+.sl-chip-rm { cursor: pointer; color: var(--accent-l); opacity: .6; font-size: 12px; line-height: 1; }
+.sl-chip-rm:hover { opacity: 1; color: var(--red); }
+
+/* ── LOADING / TOAST ────────────────────────────────────── */
+.loader { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; }
+.loader.show { display: flex; }
+.loader-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 28px; font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 10px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border-2); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 16px; font-size: 12px; color: var(--text-1); z-index: 300; opacity: 0; transform: translateY(6px); transition: all .2s; pointer-events: none; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { border-color: #14532d; color: var(--green); background: var(--green-bg); }
+.toast.error { border-color: #7f1d1d; color: var(--red); background: var(--red-bg); }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loader" id="loader">
+  <div class="loader-box"><div class="spinner"></div><span id="loader-msg">Loading…</span></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">BTL <span>Recruit</span></div>
+  <div class="topbar-campaign" id="topbar-campaign" style="display:none"></div>
+  <div class="topbar-right">
+    <button class="btn" onclick="showHome()">Campaigns</button>
+  </div>
+</div>
+
+<!-- HOME / CAMPAIGN SWITCHER -->
+<div class="home" id="home">
+  <div class="home-title">Campaign Portal</div>
+  <div class="home-sub">Open a campaign or add a new one</div>
+  <div class="home-card">
+    <div class="home-card-hdr">Add new campaign</div>
+    <div class="add-row">
+      <input id="camp-name-inp" placeholder="Campaign label (e.g. Graphic + Marketing Sep 2026)" style="flex:2">
+      <input id="camp-url-inp" placeholder="Google Sheet URL">
+      <button class="btn btn-accent" onclick="addCampaign()">Add</button>
+    </div>
+    <div class="home-card-hdr" style="border-top:none">Saved campaigns</div>
+    <div class="campaign-list" id="campaign-list">
+      <div class="empty-campaigns">No campaigns yet — add one above</div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app" id="main-app" style="display:none">
+
+  <!-- COL A: CANDIDATE LIST -->
+  <div class="col-a">
+    <div class="col-hdr">
+      Candidates
+      <span class="col-hdr-pill" id="cand-count">0</span>
+    </div>
+    <div class="search-wrap">
+      <input placeholder="Search name…" oninput="doSearch(this.value)">
+    </div>
+    <div class="filter-strip">
+      <div class="fchip on" onclick="setFilter('all',this)">All</div>
+      <div class="fchip" onclick="setFilter('Graphic',this)">Graphic</div>
+      <div class="fchip" onclick="setFilter('Marketing',this)">Marketing</div>
+    </div>
+    <div class="cand-scroll" id="cand-scroll"></div>
+  </div>
+
+  <!-- COL B: DETAIL -->
+  <div class="col-b">
+    <div class="col-hdr">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Details
+    </div>
+    <div class="detail-empty" id="det-empty">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span style="font-size:12px">Select a candidate</span>
+    </div>
+    <div id="det-body" style="display:none;flex-direction:column;height:100%">
+      <div class="det-scroll">
+        <div class="det-avatar av-g" id="det-av" style="background:#0d2f1c;color:#4ade80"></div>
+        <div class="det-name" id="det-name"></div>
+        <div><span class="role-pill" id="det-role-pill"></span></div>
+        <div class="info-block" style="margin-top:12px">
+          <div class="info-row">
+            <span class="info-lbl">Phone</span>
+            <span class="info-val" id="det-phone"></span>
+            <span class="copy-btn" onclick="copyText('det-phone')" title="Copy">⧉</span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Email</span>
+            <span class="info-val" id="det-email" style="font-size:10px"></span>
+            <span class="copy-btn" onclick="copyText('det-email')" title="Copy">⧉</span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Location</span>
+            <span class="info-val" id="det-loc"></span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Grad yr</span>
+            <span class="info-val" id="det-grad"></span>
+          </div>
+          <div class="info-row">
+            <span class="info-lbl">Applied</span>
+            <span class="info-val" id="det-date"></span>
+          </div>
+        </div>
+        <div class="sl-badge" id="sl-badge" style="display:none">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Shortlisted on <span id="sl-badge-date" style="font-weight:600;margin-left:3px"></span>
+        </div>
+      </div>
+      <div class="det-footer">
+        <button class="sl-action-btn add" id="sl-action-btn" onclick="toggleShortlist()">Add to shortlist</button>
+        <div class="sl-action-hint" id="sl-action-hint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL C: RESUME -->
+  <div class="col-c">
+    <div class="col-hdr">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Resume
+      <span id="resume-candidate-name" style="font-size:10px;color:var(--text-3);margin-left:2px;font-weight:400"></span>
+      <span class="col-hdr-pill" id="sl-total-pill" style="background:var(--green-bg);color:var(--green)">0 shortlisted</span>
+    </div>
+    <div class="resume-empty" id="resume-empty">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span style="font-size:12px">Resume preview</span>
+      <span style="font-size:11px">Select a candidate to load their resume</span>
+    </div>
+    <div class="resume-body" id="resume-body" style="display:none">
+      <div class="resume-frame-wrap">
+        <iframe id="resume-iframe" title="Candidate resume" style="display:none"></iframe>
+        <div class="resume-fallback" id="resume-fallback" style="display:none">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span style="font-size:12px;color:var(--text-2)" id="fallback-name"></span>
+          <span style="font-size:11px;color:var(--text-3)">Drive files can't be embedded — open directly</span>
+          <a class="resume-open-btn" id="resume-open-link" href="#" target="_blank">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Open resume in Drive
+          </a>
+          <a class="resume-open-btn" id="resume-portfolio-link" href="#" target="_blank" style="display:none;background:var(--amber-bg);border-color:var(--amber);color:var(--amber)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Open portfolio
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHORTLIST TRAY -->
+    <div class="sl-tray">
+      <div class="sl-tray-hdr">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Shortlisted
+        <span class="sl-tray-cnt" id="sl-tray-cnt">0</span>
+      </div>
+      <div class="sl-chips" id="sl-chips">
+        <span style="font-size:11px;color:var(--text-3)">No candidates shortlisted yet</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────
+// Paste your deployed GAS Web App URL here
+const GAS_URL = "https://script.google.com/macros/s/AKfycbz7Oo7Z39-M6zbChSQG_rE4iGnvwxASuDts-06gKJkEzHetU3cxFFPgyw8A3At-1TPy8w/exec";
+
+// ── STATE ─────────────────────────────────────────────────
+let campaigns   = [];
+let candidates  = [];
+let selIdx      = null;   // index into candidates[]
+let shortlisted = new Map(); // rowIndex → shortlistedOn date string
+let currentCampaign = null;
+let searchQ  = '';
+let roleFilter = '';
+
+// ── API ───────────────────────────────────────────────────
+async function gas(params) {
+  const url = GAS_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Network error ' + res.status);
+  const data = await res.json();
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+
+// ── LOADER / TOAST ────────────────────────────────────────
+function loading(show, msg = 'Loading…') {
+  document.getElementById('loader').classList.toggle('show', show);
+  document.getElementById('loader-msg').textContent = msg;
+}
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ── CAMPAIGNS ─────────────────────────────────────────────
+async function loadCampaigns() {
+  try {
+    loading(true, 'Loading campaigns…');
+    const data = await gas({ action: 'listCampaigns' });
+    campaigns = data.campaigns || [];
+    renderCampaignList();
+  } catch(e) { toast('Could not load campaigns: ' + e.message, 'error'); }
+  finally { loading(false); }
+}
+
+function renderCampaignList() {
+  const el = document.getElementById('campaign-list');
+  if (!campaigns.length) {
+    el.innerHTML = '<div class="empty-campaigns">No campaigns yet — add one above</div>';
+    return;
+  }
+  el.innerHTML = campaigns.map(c => `
+    <div class="campaign-item" onclick="openCampaign('${c.id}')">
+      <div class="ci-dot"></div>
+      <div class="ci-info">
+        <div class="ci-name">${esc(c.name)}</div>
+        <div class="ci-meta">Added ${esc(c.addedOn)}</div>
+      </div>
+      <span class="ci-count">${c.rowCount} rows</span>
+      <span class="ci-del" onclick="event.stopPropagation();deleteCampaign('${c.id}')" title="Remove">×</span>
+    </div>`).join('');
+}
+
+async function addCampaign() {
+  const name = document.getElementById('camp-name-inp').value.trim();
+  const url  = document.getElementById('camp-url-inp').value.trim();
+  if (!name || !url) { toast('Enter a label and a sheet URL', 'error'); return; }
+  try {
+    loading(true, 'Adding campaign…');
+    await gas({ action: 'addCampaign', name, url });
+    document.getElementById('camp-name-inp').value = '';
+    document.getElementById('camp-url-inp').value = '';
+    await loadCampaigns();
+    toast('Campaign added', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+  finally { loading(false); }
+}
+
+async function deleteCampaign(id) {
+  if (!confirm('Remove this campaign from the list?')) return;
+  try {
+    loading(true, 'Removing…');
+    await gas({ action: 'deleteCampaign', id });
+    await loadCampaigns();
+    toast('Campaign removed', 'success');
+  } catch(e) { toast(e.message, 'error'); }
+  finally { loading(false); }
+}
+
+async function openCampaign(id) {
+  currentCampaign = campaigns.find(c => c.id === id);
+  if (!currentCampaign) return;
+  try {
+    loading(true, 'Loading candidates…');
+    const [rowsData, slData] = await Promise.all([
+      gas({ action: 'getRows', url: currentCampaign.url }),
+      gas({ action: 'getShortlist', url: currentCampaign.url }),
+    ]);
+    candidates = rowsData.rows || [];
+    shortlisted = new Map((slData.shortlist || []).map(s => [String(s.rowIndex), s.shortlistedOn]));
+    selIdx = null;
+
+    document.getElementById('home').classList.add('hidden');
+    document.getElementById('main-app').style.display = 'flex';
+    document.getElementById('topbar-campaign').style.display = 'flex';
+    document.getElementById('topbar-campaign').textContent = currentCampaign.name;
+
+    renderCandidates();
+    clearDetail();
+    clearResume();
+    renderShortlistTray();
+  } catch(e) { toast('Error loading campaign: ' + e.message, 'error'); }
+  finally { loading(false); }
+}
+
+function showHome() {
+  document.getElementById('home').classList.remove('hidden');
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('topbar-campaign').style.display = 'none';
+  loadCampaigns();
+}
+
+// ── CANDIDATES ────────────────────────────────────────────
+function ini(name) {
+  return (name || '?').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+function filteredCandidates() {
+  return candidates.filter(c => {
+    const rOk = !roleFilter || c.role.includes(roleFilter);
+    const sOk = !searchQ || c.name.toLowerCase().includes(searchQ.toLowerCase());
+    return rOk && sOk;
+  });
+}
+
+function renderCandidates() {
+  const list = filteredCandidates();
+  document.getElementById('cand-count').textContent = list.length;
+  const isM = c => c.role && c.role.toLowerCase().includes('marketing');
+  document.getElementById('cand-scroll').innerHTML = list.map((c, fi) => {
+    const i = candidates.indexOf(c);
+    const starred = shortlisted.has(String(c.rowIndex));
+    return `
+      <div class="cand-row${selIdx === i ? ' sel' : ''}" onclick="selectCandidate(${i})">
+        <div class="avatar ${isM(c) ? 'av-m' : 'av-g'}">${ini(c.name)}</div>
+        <div class="cr-info">
+          <div class="cr-name">${esc(c.name)}</div>
+          <div class="cr-sub">${isM(c) ? 'Marketing' : 'Graphic'} · ${esc(c.location)}</div>
+        </div>
+        <span class="star-btn ${starred ? 'on' : ''}" onclick="event.stopPropagation();quickStar(${i})" title="${starred ? 'Remove from shortlist' : 'Shortlist'}">★</span>
+      </div>`;
+  }).join('') || '<div style="padding:20px 12px;text-align:center;color:var(--text-3);font-size:12px">No candidates match</div>';
+}
+
+function selectCandidate(i) {
+  selIdx = i;
+  const c = candidates[i];
+  renderCandidates();
+  renderDetail(c);
+  renderResume(c);
+}
+
+function doSearch(v) { searchQ = v; renderCandidates(); }
+function setFilter(f, el) {
+  roleFilter = f === 'all' ? '' : f;
+  document.querySelectorAll('.fchip').forEach(x => x.classList.remove('on'));
+  el.classList.add('on');
+  renderCandidates();
+}
+
+// ── DETAIL ────────────────────────────────────────────────
+function clearDetail() {
+  document.getElementById('det-empty').style.display = 'flex';
+  document.getElementById('det-body').style.display = 'none';
+}
+
+function renderDetail(c) {
+  document.getElementById('det-empty').style.display = 'none';
+  const db = document.getElementById('det-body');
+  db.style.display = 'flex';
+  const isM = c.role && c.role.toLowerCase().includes('marketing');
+
+  document.getElementById('det-av').textContent = ini(c.name);
+  document.getElementById('det-av').style.background = isM ? '#1e1533' : '#0d2f1c';
+  document.getElementById('det-av').style.color      = isM ? '#a78bfa' : '#4ade80';
+  document.getElementById('det-name').textContent = c.name;
+
+  const pill = document.getElementById('det-role-pill');
+  pill.textContent = c.role;
+  pill.className = 'role-pill ' + (isM ? 'rp-m' : 'rp-g');
+
+  document.getElementById('det-phone').textContent = c.phone || '—';
+  document.getElementById('det-email').textContent = c.email || '—';
+  document.getElementById('det-loc').textContent   = c.location || '—';
+  document.getElementById('det-grad').textContent  = c.gradYear || '—';
+  document.getElementById('det-date').textContent  = formatTs(c.timestamp) || c.timestamp || '—';
+
+  const slDate = shortlisted.get(String(c.rowIndex));
+  const badge  = document.getElementById('sl-badge');
+  if (slDate) {
+    badge.style.display = 'flex';
+    document.getElementById('sl-badge-date').textContent = slDate;
+  } else {
+    badge.style.display = 'none';
+  }
+
+  const btn  = document.getElementById('sl-action-btn');
+  const hint = document.getElementById('sl-action-hint');
+  if (slDate) {
+    btn.textContent  = 'Remove from shortlist';
+    btn.className    = 'sl-action-btn rem';
+    hint.textContent = 'Shortlisted ' + slDate;
+  } else {
+    btn.textContent  = 'Add to shortlist';
+    btn.className    = 'sl-action-btn add';
+    hint.textContent = '';
+  }
+}
+
+function formatTs(ts) {
+  if (!ts) return '';
+  try {
+    const d = new Date(ts);
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  } catch { return ''; }
+}
+
+// ── SHORTLIST ─────────────────────────────────────────────
+async function toggleShortlist() {
+  if (selIdx === null) return;
+  const c = candidates[selIdx];
+  const inSl = shortlisted.has(String(c.rowIndex));
+  try {
+    loading(true, inSl ? 'Removing from shortlist…' : 'Shortlisting…');
+    if (inSl) {
+      await gas({ action: 'removeShortlist', url: currentCampaign.url, rowIndex: c.rowIndex });
+      shortlisted.delete(String(c.rowIndex));
+      toast(c.name + ' removed from shortlist');
+    } else {
+      const res = await gas({ action: 'shortlist', url: currentCampaign.url, rowIndex: c.rowIndex });
+      shortlisted.set(String(c.rowIndex), res.shortlistedOn || 'Today');
+      toast(c.name + ' shortlisted ✓', 'success');
+    }
+    renderCandidates();
+    renderDetail(c);
+    renderShortlistTray();
+  } catch(e) { toast(e.message, 'error'); }
+  finally { loading(false); }
+}
+
+async function quickStar(i) {
+  selIdx = i;
+  await toggleShortlist();
+}
+
+function renderShortlistTray() {
+  const sled = candidates.filter(c => shortlisted.has(String(c.rowIndex)));
+  document.getElementById('sl-total-pill').textContent = sled.length + ' shortlisted';
+  document.getElementById('sl-tray-cnt').textContent = sled.length;
+  const chips = document.getElementById('sl-chips');
+  if (!sled.length) {
+    chips.innerHTML = '<span style="font-size:11px;color:var(--text-3)">No candidates shortlisted yet</span>';
+    return;
+  }
+  chips.innerHTML = sled.map(c => `
+    <span class="sl-chip">
+      ${esc(c.name.split(' ')[0])}
+      <span class="sl-chip-rm" onclick="quickStar(${candidates.indexOf(c)})" title="Remove">✕</span>
+    </span>`).join('');
+}
+
+// ── RESUME ────────────────────────────────────────────────
+function clearResume() {
+  document.getElementById('resume-empty').style.display = 'flex';
+  document.getElementById('resume-body').style.display = 'none';
+}
+
+function renderResume(c) {
+  document.getElementById('resume-empty').style.display = 'none';
+  document.getElementById('resume-body').style.display = 'flex';
+  document.getElementById('resume-candidate-name').textContent = '— ' + c.name;
+
+  const iframe    = document.getElementById('resume-iframe');
+  const fallback  = document.getElementById('resume-fallback');
+  const openLink  = document.getElementById('resume-open-link');
+  const portLink  = document.getElementById('resume-portfolio-link');
+  const fbName    = document.getElementById('fallback-name');
+
+  fbName.textContent = c.name + ' — resume';
+
+  if (c.resumeUrl && c.resumeUrl.startsWith('http')) {
+    const embedUrl = driveEmbedUrl(c.resumeUrl);
+    if (embedUrl) {
+      iframe.src = embedUrl;
+      iframe.style.display = 'block';
+      fallback.style.display = 'none';
+    } else {
+      iframe.style.display = 'none';
+      fallback.style.display = 'flex';
+    }
+    openLink.href = c.resumeUrl;
+    openLink.style.display = 'flex';
+  } else {
+    iframe.style.display = 'none';
+    openLink.href = '#';
+    openLink.style.display = 'none';
+    fallback.style.display = 'flex';
+  }
+
+  if (c.portfolio && c.portfolio.startsWith('http') && c.portfolio.toLowerCase() !== 'na' && c.portfolio.toLowerCase() !== 'n/a') {
+    portLink.href = c.portfolio;
+    portLink.style.display = 'flex';
+  } else {
+    portLink.style.display = 'none';
+  }
+}
+
+function driveEmbedUrl(url) {
+  // Convert Drive share URL → embeddable preview URL
+  const fileIdMatch = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if (fileIdMatch) return 'https://drive.google.com/file/d/' + fileIdMatch[1] + '/preview';
+  const openMatch = url.match(/id=([a-zA-Z0-9_-]+)/);
+  if (openMatch) return 'https://drive.google.com/file/d/' + openMatch[1] + '/preview';
+  return null;
+}
+
+// ── UTILS ─────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function copyText(id) {
+  const val = document.getElementById(id).textContent;
+  navigator.clipboard && navigator.clipboard.writeText(val).then(() => toast('Copied', 'success'));
+}
+
+// ── INIT ──────────────────────────────────────────────────
+loadCampaigns();
+</script>
+</body>
+</html>
