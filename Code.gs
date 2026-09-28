@@ -54,6 +54,9 @@ function handleRequest(e) {
       case "shortlist":      result = shortlistCandidate(params.url, params.rowIndex);  break;
       case "getShortlist":   result = getShortlist(params.url);                        break;
       case "removeShortlist":result = removeShortlist(params.url, params.rowIndex);    break;
+      case "reject":         result = rejectCandidate(params.url, params.rowIndex);     break;
+      case "getRejected":    result = getRejected(params.url);                         break;
+      case "removeRejected": result = removeRejected(params.url, params.rowIndex);      break;
       default:               result = { error: "Unknown action: " + action };
     }
 
@@ -234,6 +237,16 @@ function shortlistCandidate(url, rowIndex) {
     return { success: true, alreadyExists: true };
   }
 
+  // Shortlisting a rejected candidate un-rejects them
+  const rejSheet = getOrCreateRejectedSheet(ss);
+  const rejData  = rejSheet.getDataRange().getValues();
+  for (let i = 1; i < rejData.length; i++) {
+    if (String(rejData[i][0]) === String(rowIndex)) {
+      rejSheet.deleteRow(i + 1);
+      break;
+    }
+  }
+
   // Read the candidate's row from the main sheet
   const values  = mainSheet.getDataRange().getValues();
   const headers = values[0];
@@ -316,4 +329,134 @@ function removeShortlist(url, rowIndex) {
   }
 
   return { success: false, message: "Row not found in shortlist" };
+}
+
+
+// ── REJECTED HELPERS ─────────────────────────────────────────
+function getOrCreateRejectedSheet(ss) {
+  let sheet = ss.getSheetByName("Rejected");
+  if (!sheet) {
+    sheet = ss.insertSheet("Rejected");
+    sheet.appendRow([
+      "Row Index", "Name", "Phone", "Email",
+      "Location", "Grad Year", "Position",
+      "Applied On", "Rejected On"
+    ]);
+    sheet.setFrozenRows(1);
+
+    // Light red header
+    sheet.getRange(1, 1, 1, 9)
+         .setBackground("#fce8e6")
+         .setFontWeight("bold");
+  }
+  return sheet;
+}
+
+
+// ── ACTION: reject ────────────────────────────────────────────
+// Moves a candidate to the Rejected tab of their campaign sheet
+function rejectCandidate(url, rowIndex) {
+  if (!url || !rowIndex) throw new Error("url and rowIndex are required");
+
+  const ss        = SpreadsheetApp.openByUrl(url);
+  const mainSheet = ss.getSheets()[0];
+  const rejSheet  = getOrCreateRejectedSheet(ss);
+
+  // Check not already rejected
+  const existing = rejSheet.getDataRange().getValues().slice(1);
+  if (existing.some(r => String(r[0]) === String(rowIndex))) {
+    return { success: true, alreadyExists: true };
+  }
+
+  // A rejected candidate shouldn't also sit in the shortlist
+  const slSheet = getOrCreateShortlistSheet(ss);
+  const slData  = slSheet.getDataRange().getValues();
+  for (let i = 1; i < slData.length; i++) {
+    if (String(slData[i][0]) === String(rowIndex)) {
+      slSheet.deleteRow(i + 1);
+      break;
+    }
+  }
+
+  // Read the candidate's row from the main sheet
+  const values  = mainSheet.getDataRange().getValues();
+  const headers = values[0];
+  const row     = values[rowIndex - 1]; // rowIndex is 1-based
+
+  const idx = {};
+  Object.entries(FORM_COLS).forEach(([key, label]) => {
+    const i = headers.findIndex(h => h.toString().trim().toLowerCase().includes(label.toLowerCase()));
+    idx[key] = i >= 0 ? i : -1;
+  });
+
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd MMM yyyy");
+
+  let appliedOn = "";
+  if (idx.TIMESTAMP >= 0 && row[idx.TIMESTAMP]) {
+    try {
+      appliedOn = Utilities.formatDate(new Date(row[idx.TIMESTAMP]), Session.getScriptTimeZone(), "dd MMM yyyy");
+    } catch (_) {
+      appliedOn = String(row[idx.TIMESTAMP]);
+    }
+  }
+
+  rejSheet.appendRow([
+    rowIndex,
+    idx.NAME      >= 0 ? row[idx.NAME]      : "",
+    idx.PHONE     >= 0 ? row[idx.PHONE]     : "",
+    idx.EMAIL     >= 0 ? row[idx.EMAIL]     : "",
+    idx.LOCATION  >= 0 ? row[idx.LOCATION]  : "",
+    idx.GRAD_YEAR >= 0 ? row[idx.GRAD_YEAR] : "",
+    idx.ROLE      >= 0 ? row[idx.ROLE]      : "",
+    appliedOn,
+    today,
+  ]);
+
+  return { success: true, rejectedOn: today };
+}
+
+
+// ── ACTION: getRejected ─────────────────────────────────────────
+// Returns all rejected candidates for a campaign
+function getRejected(url) {
+  if (!url) throw new Error("url is required");
+
+  const ss      = SpreadsheetApp.openByUrl(url);
+  const rejSheet = getOrCreateRejectedSheet(ss);
+  const data    = rejSheet.getDataRange().getValues();
+  if (data.length <= 1) return { rejected: [] };
+
+  const rejected = data.slice(1).map(row => ({
+    rowIndex:     row[0],
+    name:         row[1],
+    phone:        row[2],
+    email:        row[3],
+    location:     row[4],
+    gradYear:     row[5],
+    role:         row[6],
+    appliedOn:    row[7],
+    rejectedOn:   row[8],
+  }));
+
+  return { rejected };
+}
+
+
+// ── ACTION: removeRejected ───────────────────────────────────────
+// Restores a candidate from the Rejected tab back into the main list
+function removeRejected(url, rowIndex) {
+  if (!url || !rowIndex) throw new Error("url and rowIndex are required");
+
+  const ss       = SpreadsheetApp.openByUrl(url);
+  const rejSheet = getOrCreateRejectedSheet(ss);
+  const data     = rejSheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === String(rowIndex)) {
+      rejSheet.deleteRow(i + 1);
+      return { success: true };
+    }
+  }
+
+  return { success: false, message: "Row not found in rejected list" };
 }
