@@ -100,17 +100,19 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); fo
 .detail-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); }
 .detail-empty svg { opacity: .3; }
 .det-scroll { flex: 1; overflow-y: auto; padding: 14px 12px; }
-.det-avatar { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600; margin-bottom: 10px; }
 .det-name { font-size: 15px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 3px; }
 .role-pill { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 10px; font-weight: 600; margin-bottom: 14px; }
 .rp-g { background: #0d2f1c; color: #4ade80; }
 .rp-m { background: #1e1533; color: #a78bfa; }
 .info-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 10px; }
 .info-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.info-row-wrap { align-items: flex-start; }
 .info-row:last-child { border-bottom: none; }
 .info-icon { width: 14px; color: var(--text-3); flex-shrink: 0; }
 .info-lbl { font-size: 10px; color: var(--text-3); width: 58px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .03em; }
+.info-lbl-wide { width: auto; max-width: 100px; }
 .info-val { font-size: 11px; color: var(--text-1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info-val-wrap { white-space: normal; overflow: visible; text-overflow: unset; word-break: break-word; }
 .copy-btn { font-size: 11px; color: var(--text-3); cursor: pointer; padding: 2px; border-radius: 3px; flex-shrink: 0; transition: color .1s; }
 .copy-btn:hover { color: var(--accent-l); }
 .sl-badge { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: var(--green-bg); border: 1px solid #14532d; border-radius: var(--radius); font-size: 11px; color: var(--green); margin-bottom: 10px; }
@@ -221,8 +223,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); fo
     </div>
     <div id="det-body" style="display:none;flex-direction:column;height:100%">
       <div class="det-scroll">
-        <div class="det-avatar av-g" id="det-av" style="background:#0d2f1c;color:#4ade80"></div>
-        <div class="det-name" id="det-name"></div>
+        <div class="det-name" id="det-name" style="margin-top:2px"></div>
         <div><span class="role-pill" id="det-role-pill"></span></div>
         <div class="info-block" style="margin-top:12px">
           <div class="info-row">
@@ -247,6 +248,10 @@ body { font-family: var(--font); background: var(--bg); color: var(--text-1); fo
             <span class="info-lbl">Applied</span>
             <span class="info-val" id="det-date"></span>
           </div>
+        </div>
+        <div id="det-extra-wrap" style="display:none">
+          <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin:12px 2px 6px">Additional information</div>
+          <div class="info-block" id="det-extra-block"></div>
         </div>
         <div class="sl-badge" id="sl-badge" style="display:none">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -490,9 +495,6 @@ function renderDetail(c) {
   db.style.display = 'flex';
   const isM = c.role && c.role.toLowerCase().includes('marketing');
 
-  document.getElementById('det-av').textContent = ini(c.name);
-  document.getElementById('det-av').style.background = isM ? '#1e1533' : '#0d2f1c';
-  document.getElementById('det-av').style.color      = isM ? '#a78bfa' : '#4ade80';
   document.getElementById('det-name').textContent = c.name;
 
   const pill = document.getElementById('det-role-pill');
@@ -504,6 +506,20 @@ function renderDetail(c) {
   document.getElementById('det-loc').textContent   = c.location || '—';
   document.getElementById('det-grad').textContent  = c.gradYear || '—';
   document.getElementById('det-date').textContent  = formatTs(c.timestamp) || c.timestamp || '—';
+
+  const extraWrap  = document.getElementById('det-extra-wrap');
+  const extraBlock = document.getElementById('det-extra-block');
+  if (c.extra && c.extra.length) {
+    extraWrap.style.display = 'block';
+    extraBlock.innerHTML = c.extra.map(item => `
+      <div class="info-row info-row-wrap">
+        <span class="info-lbl info-lbl-wide">${esc(item.label)}</span>
+        <span class="info-val info-val-wrap">${esc(item.value) || '—'}</span>
+      </div>`).join('');
+  } else {
+    extraWrap.style.display = 'none';
+    extraBlock.innerHTML = '';
+  }
 
   const slDate = shortlisted.get(String(c.rowIndex));
   const badge  = document.getElementById('sl-badge');

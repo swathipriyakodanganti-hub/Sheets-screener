@@ -169,6 +169,16 @@ function getRows(url) {
   const slData     = slSheet.getDataRange().getValues().slice(1);
   const shortlisted = new Set(slData.map(r => String(r[0]))); // row index stored in col A
 
+  // Any header column not already mapped to a known FORM_COLS field
+  // gets surfaced as "additional information" on the frontend.
+  const knownIdx = new Set(Object.values(idx).filter(i => i >= 0));
+  const extraHeaders = [];
+  headers.forEach((h, hi) => {
+    if (knownIdx.has(hi)) return;
+    const label = String(h || "").trim();
+    if (label) extraHeaders.push({ label, hi });
+  });
+
   const rows = values.slice(1).map((row, i) => ({
     rowIndex:   i + 2,  // 1-based sheet row (row 1 = header, row 2 = first data row)
     timestamp:  idx.TIMESTAMP  >= 0 ? row[idx.TIMESTAMP]  : "",
@@ -181,6 +191,7 @@ function getRows(url) {
     resumeUrl:  idx.RESUME     >= 0 ? row[idx.RESUME]     : "",
     portfolio:  idx.PORTFOLIO  >= 0 ? row[idx.PORTFOLIO]  : "",
     shortlisted: shortlisted.has(String(i + 2)),
+    extra: extraHeaders.map(({ label, hi }) => ({ label, value: row[hi] })),
   }));
 
   return { rows, sheetTitle: sheet.getName() };
